@@ -6,52 +6,54 @@ import os
 from datetime import datetime
 
 # File for captured image
-filename = './scenes/photo.png'
+filename = './scenes/stereo_photo.png'
 
 # Camera settings
-cam_width = 1280
+cam_width = 640  # Reduced for each camera
 cam_height = 480
 
 # Final image capture settings
-scale_ratio = 0.5
+scale_ratio = 1  # No scaling to maintain resolution
 
 # Camera resolution height must be dividable by 16, and width by 32
 cam_width = int((cam_width+31)/32)*32
 cam_height = int((cam_height+15)/16)*16
 print("Used camera resolution: "+str(cam_width)+" x "+str(cam_height))
 
-# Buffer for captured image settings
-img_width = int(cam_width * scale_ratio)
-img_height = int(cam_height * scale_ratio)
-print("Scaled image resolution: "+str(img_width)+" x "+str(img_height))
+# Initialize the cameras
+picam1 = Picamera2(0)  # First camera
+picam2 = Picamera2(1)  # Second camera
 
-# Initialize the camera
-picam2 = Picamera2()
-config = picam2.create_still_configuration(
-    main={"size": (cam_width, cam_height)},
-    lores={"size": (img_width, img_height)},
-    display="lores"
-)
-picam2.configure(config)
+config1 = picam1.create_still_configuration(main={"size": (cam_width, cam_height)})
+config2 = picam2.create_still_configuration(main={"size": (cam_width, cam_height)})
+
+picam1.configure(config1)
+picam2.configure(config2)
+
+picam1.start()
 picam2.start()
 
-# Allow time for the camera to warm up
+# Allow time for the cameras to warm up
 time.sleep(2)
 
 t2 = datetime.now()
 counter = 0
 avgtime = 0
 
-# Capture frames from the camera
+# Capture frames from the cameras
 while True:
-    frame = picam2.capture_array("lores")
+    frame1 = picam1.capture_array("main")
+    frame2 = picam2.capture_array("main")
+    
+    # Combine frames side by side
+    combined_frame = np.hstack((frame1, frame2))
     
     counter += 1
     t1 = datetime.now()
     timediff = t1 - t2
     avgtime = avgtime + (timediff.total_seconds())
     
-    cv2.imshow("pair", frame)
+    cv2.imshow("Stereo Pair", combined_frame)
     key = cv2.waitKey(1) & 0xFF
     t2 = datetime.now()
     
@@ -62,8 +64,9 @@ while True:
         print("Average FPS: " + str(1/avgtime))
         if not os.path.isdir("./scenes"):
             os.makedirs("./scenes")
-        cv2.imwrite(filename, frame)
+        cv2.imwrite(filename, combined_frame)
         break
 
+picam1.stop()
 picam2.stop()
 cv2.destroyAllWindows()
