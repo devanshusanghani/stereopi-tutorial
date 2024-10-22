@@ -23,8 +23,8 @@ print("Used camera resolution: "+str(cam_width)+" x "+str(cam_height))
 picam1 = Picamera2(0)  # First camera
 picam2 = Picamera2(1)  # Second camera
 
-config1 = picam1.create_still_configuration(main={"size": (cam_width, cam_height)})
-config2 = picam2.create_still_configuration(main={"size": (cam_width, cam_height)})
+config1 = picam1.create_still_configuration(main={"size": (cam_width, cam_height), "format": "BGR888"})
+config2 = picam2.create_still_configuration(main={"size": (cam_width, cam_height), "format": "BGR888"})
 
 picam1.configure(config1)
 picam2.configure(config2)
@@ -43,6 +43,13 @@ print("Starting photo sequence")
 while counter < total_photos:
     frame1 = picam1.capture_array("main")
     frame2 = picam2.capture_array("main")
+
+    frame1 = cv2.cvtColor(frame1, cv2.COLOR_RGB2BGR)
+    frame2 = cv2.cvtColor(frame2, cv2.COLOR_RGB2BGR)
+
+    #mirror both camera horizontally
+    frame1 = cv2.flip(frame1, 1)
+    frame2 = cv2.flip(frame2, 1)    
     
     # Combine frames side by side
     combined_frame = np.hstack((frame1, frame2))
